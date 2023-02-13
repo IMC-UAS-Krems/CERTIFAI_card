@@ -1,7 +1,9 @@
 numpy
 pandas
 torch
-sklearn
-skimage
+scikit-learn
+scikit-image
 tqdm
 pytorch_lightning
+matplotlib
+
