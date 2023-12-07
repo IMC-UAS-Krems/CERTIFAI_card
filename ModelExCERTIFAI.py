@@ -26,7 +26,7 @@ early_stop = EarlyStopping(
     mode = 'min')
 
 class Classifier(pl.LightningModule):
-    def __init__(self, in_feats = 5, h_size = 25, out = 5, n_layers = 1,
+    def __init__(self, in_feats = 14, h_size = 25, out = 5, n_layers = 1,
                  activation_function = nn.ReLU, lr = 1e-3):
         super().__init__()
         
@@ -72,7 +72,9 @@ class Classifier(pl.LightningModule):
         loss = F.cross_entropy(yhat, y)
         self.log('val_loss', loss)
     
-url = 'drug200.csv'
+# url = 'drug200.csv'
+
+url = 'adult.csv'
 
 cert = CERTIFAI.from_csv(url)
 
