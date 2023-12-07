@@ -26,7 +26,7 @@ early_stop = EarlyStopping(
     mode = 'min')
 
 class Classifier(pl.LightningModule):
-    def __init__(self, in_feats = 14, h_size = 25, out = 5, n_layers = 1,
+    def __init__(self, in_feats = 14, h_size = 25, out = 5, n_layers = 1,  # in_feats = 5 for drug200, 14 for adult
                  activation_function = nn.ReLU, lr = 1e-3):
         super().__init__()
         
