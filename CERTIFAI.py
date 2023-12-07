@@ -156,6 +156,20 @@ class CERTIFAI:
             
         return len(con)/x.shape[-1]*con_distance + len(cat)/x.shape[-1]*cat_distance
     
+    def card_distance(self, x, y, con = None, cat = None):
+        assert isinstance(x, pd.DataFrame), 'This distance can be used only if input\
+            is a row of a pandas dataframe at the moment.'
+        if not isinstance(y, pd.DataFrame):
+            y = pd.DataFrame(y, columns = x.columns.tolist())
+        else:
+            y.columns = x.columns.tolist()
+        if con is None or cat is None:
+            con, cat = self.get_con_cat_columns(x)
+
+        result = y.apply(lambda counterfact: np.sum(x.iloc[0,:] != counterfact), axis=1)
+
+        return result
+    
     def img_distance(self, x, y):
         
         distances = []
@@ -387,7 +401,8 @@ class CERTIFAI:
     
     def generate_counterfacts_list_dictionary(self, counterfacts_list,
                                               distances, fitness_dict,
-                                              retain_k, start=0):
+                                              retain_k, cardinalities = None, 
+                                              cardinalities_dict = None, start=0):
         '''Function to generate and trim at the same time the list containing
         the counterfactuals and a dictionary having fitness score
         for each counterfactual index in the list. 
@@ -418,6 +433,11 @@ class CERTIFAI:
                 
         gen_dict = {i:distance for i, 
                                 distance in enumerate(distances)}
+        
+        card_dict = None
+        if cardinalities is not None:
+            card_dict = {i:card for i,
+                                card in enumerate(cardinalities)}
                     
         gen_dict = {k:v for k,v in sorted(gen_dict.items(),
                                           key = lambda item: item[1])}
@@ -433,6 +453,9 @@ class CERTIFAI:
             selected_counterfacts.append(counterfacts_list[key])
             
             fitness_dict[start+k] = value
+
+            if cardinalities_dict is not None:
+                cardinalities_dict[start+k] = card_dict[key]
             
             k+=1
             
@@ -693,7 +716,8 @@ class CERTIFAI:
             final_k = 1,
             normalisation = None,
             fixed = None,
-            verbose = False):
+            verbose = False,
+            card = None):
         '''Generate the counterfactuals for the defined dataset under the
         trained model. The whole process is described in detail in the
         original paper.
@@ -856,6 +880,8 @@ class CERTIFAI:
             counterfacts = []
             
             counterfacts_fit = {}
+
+            cardinalities_dict = {}
             
             for g in range(generations):
             
@@ -893,26 +919,40 @@ class CERTIFAI:
                 final_generation = crossed_generation.loc[diff_prediction]
                 
                 final_distances = self.distance(sample, final_generation)[0]
-                
+
+                final_cards = self.card_distance(sample, final_generation)
+
+                final_cards_penalty = 0
+                if card is not None:
+                    final_cards_penalty = (final_cards > card)*1000
+
+                final_distances = final_distances + final_cards_penalty
+
                 final_generation, counterfacts_fit = self.generate_counterfacts_list_dictionary(
                     counterfacts_list = final_generation.values.tolist(),
                     distances = final_distances, 
                     fitness_dict = counterfacts_fit,
                     retain_k = gen_retain, 
+                    cardinalities = final_cards,
+                    cardinalities_dict = cardinalities_dict,
                     start = len(counterfacts_fit))
                 
                 counterfacts.extend(final_generation)
                 
                 assert len(counterfacts)==len(counterfacts_fit), 'Something went wrong: len(counterfacts): {}, len(counterfacts_fit): {}'.format(len(counterfacts), len(counterfacts_fit))
             
+            final_cardinalities = {}
+
             counterfacts, fitness_dict = self.generate_counterfacts_list_dictionary(
                     counterfacts_list = counterfacts,
                     distances = list(counterfacts_fit.values()), 
                     fitness_dict = {},
                     retain_k = final_k, 
+                    cardinalities = list(cardinalities_dict.values()),
+                    cardinalities_dict=final_cardinalities,
                     start = 0)
-            
-            self.results.append((sample, counterfacts, list(fitness_dict.values())))
+
+            self.results.append((sample, counterfacts, list(fitness_dict.values()), list(final_cardinalities.values())))
             
     def check_robustness(self, x = None, normalised = False):
         '''Calculate the Counterfactual-based Explanation for Robustness
