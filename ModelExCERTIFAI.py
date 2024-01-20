@@ -26,7 +26,7 @@ early_stop = EarlyStopping(
     mode = 'min')
 
 class Classifier(pl.LightningModule):
-    def __init__(self, in_feats = 14, h_size = 25, out = 5, n_layers = 1,  # in_feats = 5 for drug200, 14 for adult
+    def __init__(self, in_feats = 6, h_size = 25, out = 5, n_layers = 1,  # in_feats = 5 for drug200, 6 for cars
                  activation_function = nn.ReLU, lr = 1e-3):
         super().__init__()
         
@@ -73,8 +73,7 @@ class Classifier(pl.LightningModule):
         self.log('val_loss', loss)
     
 # url = 'drug200.csv'
-
-url = 'adult.csv'
+url = 'cars.csv'
 
 cert = CERTIFAI.from_csv(url)
 
@@ -106,7 +105,7 @@ model = Classifier()
 
 trainer.fit(model, train_loader, val_loader)
 
-cert.fit(model, generations = 10, verbose = True, card = None)
+mean_card = cert.fit(model, generations = 10, verbose = True, card = 3)
 
 # print("(Unnormalised) model's robustness:")
 # print(cert.check_robustness(), '\n')
@@ -122,3 +121,5 @@ print("Counterfactuals:")
 #print(cert.tab_dataset.iloc[0,:])
 for result in cert.results:
     print(result)
+
+print(f'Mean cardinality of all conterfactuals generated is: {mean_card}')

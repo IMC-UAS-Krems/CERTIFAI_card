@@ -153,6 +153,8 @@ class CERTIFAI:
                 
         else:
             con_distance = 1
+            cat_distance = cat_distance.reshape((x.shape[0], y.shape[0]))
+            return len(cat)/x.shape[-1]*cat_distance
             
         return len(con)/x.shape[-1]*con_distance + len(cat)/x.shape[-1]*cat_distance
     
@@ -607,7 +609,7 @@ class CERTIFAI:
             
             generation = generation.tolist()
         
-            generation = pd.DataFrame(generation)
+            generation = pd.DataFrame(generation, columns=sample.columns.tolist())
         
         for i in sample:
             generation[i] = generation[i].astype(sample[i].dtype)
@@ -869,7 +871,8 @@ class CERTIFAI:
                
         tot_samples = tqdm(range(x.shape[0])) if verbose else range(x.shape[0])
         
-        
+        all_cardinalities = []
+
         for i in tot_samples:
             
             if verbose:
@@ -924,7 +927,7 @@ class CERTIFAI:
 
                 final_cards_penalty = 0
                 if card is not None:
-                    final_cards_penalty = (final_cards > card)*1000
+                    final_cards_penalty = ((final_cards > card)*999999999)**2
 
                 final_distances = final_distances + final_cards_penalty
 
@@ -953,6 +956,9 @@ class CERTIFAI:
                     start = 0)
 
             self.results.append((sample, counterfacts, list(fitness_dict.values()), list(final_cardinalities.values())))
+            all_cardinalities.extend(list(final_cardinalities.values()))
+
+        return np.mean(np.array(all_cardinalities))
             
     def check_robustness(self, x = None, normalised = False):
         '''Calculate the Counterfactual-based Explanation for Robustness
